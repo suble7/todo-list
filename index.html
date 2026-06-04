@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>待办清单 - 生活效率工具箱</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900">
+    <header class="bg-black/30 backdrop-blur-sm border-b border-white/10">
+        <div class="max-w-4xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="text-4xl">📋</div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-white">生活效率工具箱</h1>
+                        <p class="text-sm text-blue-300">高效管理，让生活更有条理</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 bg-blue-500/20 px-4 py-2 rounded-full">
+                    <span class="text-xl">🏆</span>
+                    <span class="text-white font-bold" id="header-trophies">0</span>
+                </div>
+            </div>
+            <nav class="flex gap-2">
+                <button onclick="switchTool('todo')" id="nav-todo" class="nav-btn active">
+                    <i class="fas fa-list-check mr-2"></i>待办清单
+                </button>
+                <button onclick="switchTool('notes')" id="nav-notes" class="nav-btn">
+                    <i class="fas fa-sticky-note mr-2"></i>笔记
+                </button>
+                <button onclick="switchTool('finance')" id="nav-finance" class="nav-btn">
+                    <i class="fas fa-wallet mr-2"></i>记账
+                </button>
+                <button onclick="switchTool('about')" id="nav-about" class="nav-btn">
+                    <i class="fas fa-user mr-2"></i>关于我
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-6">
+        <div id="tool-todo" class="tool-content">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                    <div class="text-3xl mb-2">📝</div>
+                    <div class="text-white text-2xl font-bold" id="todo-total">0</div>
+                    <div class="text-blue-300 text-sm">总任务</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                    <div class="text-3xl mb-2">⏳</div>
+                    <div class="text-white text-2xl font-bold" id="todo-pending">0</div>
+                    <div class="text-blue-300 text-sm">待完成</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                    <div class="text-3xl mb-2">✅</div>
+                    <div class="text-white text-2xl font-bold" id="todo-completed">0</div>
+                    <div class="text-blue-300 text-sm">已完成</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                    <div class="text-3xl mb-2">🏆</div>
+                    <div class="text-white text-2xl font-bold" id="todo-trophies">0</div>
+                    <div class="text-blue-300 text-sm">获得奖杯</div>
+                </div>
+            </div>
+
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10 mb-6">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-white font-semibold">完成进度</span>
+                    <span class="text-blue-300" id="todo-progress-text">0%</span>
+                </div>
+                <div class="w-full bg-white/20 rounded-full h-4 overflow-hidden">
+                    <div id="todo-progress-bar" class="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10 mb-6">
+                <h3 class="text-lg font-bold text-white mb-4">➕ 添加待办事项</h3>
+                <form id="todo-form" class="space-y-4">
+                    <div>
+                        <input type="text" id="todo-input" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:border-blue-500" placeholder="输入任务内容...">
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-white text-sm mb-2">截止时间（可选）</label>
+                            <input type="datetime-local" id="todo-deadline" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-white text-sm mb-2">优先级</label>
+                            <select id="todo-priority" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500">
+                                <option value="low">🟢 低优先级</option>
+                                <option value="medium" selected>🟡 中优先级</option>
+                                <option value="high">🔴 高优先级</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+                        <i class="fas fa-plus mr-2"></i> 添加任务
+                    </button>
+                </form>
+            </div>
+
+            <div class="flex gap-2 mb-4">
+                <button onclick="filterTodos('all')" id="filter-all" class="filter-btn active">全部</button>
+                <button onclick="filterTodos('pending')" id="filter-pending" class="filter-btn">未完成</button>
+                <button onclick="filterTodos('completed')" id="filter-completed" class="filter-btn">已完成</button>
+            </div>
+
+            <div class="space-y-3" id="todo-list"></div>
+
+            <div class="mt-6 bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                <h3 class="text-lg font-bold text-white mb-4">🏆 成就徽章</h3>
+                <div class="flex flex-wrap gap-3" id="todo-badges"></div>
+            </div>
+        </div>
+
+        <div id="tool-notes" class="tool-content hidden">
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                    <div class="text-3xl mb-2">📒</div>
+                    <div class="text-white text-2xl font-bold" id="notes-total">0</div>
+                    <div class="text-blue-300 text-sm">总笔记</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                    <div class="text-3xl mb-2">⭐</div>
+                    <div class="text-white text-2xl font-bold" id="notes-starred">0</div>
+                    <div class="text-blue-300 text-sm">已收藏</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                    <div class="text-3xl mb-2">🔥</div>
+                    <div class="text-white text-2xl font-bold" id="notes-today">0</div>
+                    <div class="text-blue-300 text-sm">今日新增</div>
+                </div>
+            </div>
+
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10 mb-6">
+                <h3 class="text-lg font-bold text-white mb-4">✏️ 新建笔记</h3>
+                <form id="note-form" class="space-y-4">
+                    <div>
+                        <input type="text" id="note-title" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:border-blue-500" placeholder="笔记标题...">
+                    </div>
+                    <div>
+                        <textarea id="note-content" rows="4" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:border-blue-500 resize-none" placeholder="笔记内容..."></textarea>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <input type="color" id="note-color" value="#6366f1" class="w-10 h-10 rounded-lg cursor-pointer border-0 bg-transparent">
+                            <span class="text-white/70 text-sm">笔记颜色</span>
+                        </div>
+                        <button type="submit" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white py-2 px-6 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+                            <i class="fas fa-plus mr-2"></i> 创建笔记
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="flex gap-2 mb-4">
+                <button onclick="filterNotes('all')" id="notes-filter-all" class="filter-btn active">全部</button>
+                <button onclick="filterNotes('starred')" id="notes-filter-starred" class="filter-btn">已收藏</button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="notes-list"></div>
+        </div>
+
+        <div id="tool-finance" class="tool-content hidden">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                    <div class="text-3xl mb-2">💰</div>
+                    <div class="text-white text-2xl font-bold" id="finance-total">0.00</div>
+                    <div class="text-blue-300 text-sm">总支出</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                    <div class="text-3xl mb-2">📈</div>
+                    <div class="text-white text-2xl font-bold" id="finance-income">0.00</div>
+                    <div class="text-blue-300 text-sm">总收入</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                    <div class="text-3xl mb-2">⚖️</div>
+                    <div class="text-white text-2xl font-bold" id="finance-balance">0.00</div>
+                    <div class="text-blue-300 text-sm">结余</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                    <div class="text-3xl mb-2">📊</div>
+                    <div class="text-white text-2xl font-bold" id="finance-count">0</div>
+                    <div class="text-blue-300 text-sm">记录数</div>
+                </div>
+            </div>
+
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10 mb-6">
+                <h3 class="text-lg font-bold text-white mb-4">💳 添加记账记录</h3>
+                <form id="finance-form" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-white text-sm mb-2">类型</label>
+                            <select id="finance-type" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500">
+                                <option value="expense">📉 支出</option>
+                                <option value="income">📈 收入</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-white text-sm mb-2">金额</label>
+                            <input type="number" id="finance-amount" step="0.01" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500" placeholder="0.00">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-white text-sm mb-2">分类</label>
+                        <select id="finance-category" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500">
+                            <option value="food">🍜 餐饮</option>
+                            <option value="transport">🚇 交通</option>
+                            <option value="shopping">🛒 购物</option>
+                            <option value="entertainment">🎮 娱乐</option>
+                            <option value="health">🏥 医疗</option>
+                            <option value="education">📚 教育</option>
+                            <option value="salary">💼 工资</option>
+                            <option value="bonus">🎁 奖金</option>
+                            <option value="other">📦 其他</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-white text-sm mb-2">备注</label>
+                        <input type="text" id="finance-note" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-500" placeholder="添加备注...">
+                    </div>
+                    <button type="submit" class="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+                        <i class="fas fa-plus mr-2"></i> 添加记录
+                    </button>
+                </form>
+            </div>
+
+            <div class="flex gap-2 mb-4">
+                <button onclick="filterFinance('all')" id="finance-filter-all" class="filter-btn active">全部</button>
+                <button onclick="filterFinance('expense')" id="finance-filter-expense" class="filter-btn">支出</button>
+                <button onclick="filterFinance('income')" id="finance-filter-income" class="filter-btn">收入</button>
+            </div>
+
+            <div class="space-y-3" id="finance-list"></div>
+        </div>
+
+        <div id="tool-about" class="tool-content hidden">
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/10 mb-6">
+                <div class="flex flex-col md:flex-row items-center gap-6">
+                    <div class="w-32 h-32 rounded-full overflow-hidden border-4 border-white/20">
+                        <img src="avatar.jpg" alt="林婧怡" class="w-full h-full object-cover">
+                    </div>
+                    <div class="text-center md:text-left">
+                        <h2 class="text-3xl font-bold text-white mb-2">林婧怡</h2>
+                        <div class="flex flex-wrap justify-center md:justify-start gap-4 text-white/80">
+                            <span class="flex items-center gap-1">
+                                <i class="fas fa-phone"></i> 13959617237
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <i class="fas fa-envelope"></i> 2628404350@qq.com
+                            </span>
+                        </div>
+                        <div class="flex flex-wrap justify-center md:justify-start gap-2 mt-3">
+                            <span class="bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full text-sm">在读</span>
+                            <span class="bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full text-sm">专科</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                    <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                        <i class="fas fa-graduation-cap"></i> 教育经历
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="bg-white/5 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-white font-semibold">福州软件职业技术学院</span>
+                                <span class="text-white/60 text-sm">2024-06 ~ 2027-07</span>
+                            </div>
+                            <div class="text-blue-300 text-sm">人工智能技术应用 · 大专</div>
+                            <div class="text-white/60 text-sm mt-1">全日制 · 智能产业学院 · 福州</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                    <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                        <i class="fas fa-cogs"></i> 专业技能
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex items-start gap-3">
+                            <span class="text-green-400">✓</span>
+                            <div>
+                                <div class="text-white font-medium">Python 数据处理</div>
+                                <div class="text-white/60 text-sm">熟练使用 Pandas 完成数据整理与清洗作业</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <span class="text-green-400">✓</span>
+                            <div>
+                                <div class="text-white font-medium">机器学习基础</div>
+                                <div class="text-white/60 text-sm">基于框架搭建分类模型，完成图像、文本分类项目</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <span class="text-green-400">✓</span>
+                            <div>
+                                <div class="text-white font-medium">深度学习基础</div>
+                                <div class="text-white/60 text-sm">完成图像、文本分类实训项目</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <span class="text-green-400">✓</span>
+                            <div>
+                                <div class="text-white font-medium">Excel 数据处理</div>
+                                <div class="text-white/60 text-sm">汇总实验数据，统计模型训练指标</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/10 mt-6">
+                <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                    <i class="fas fa-lightbulb"></i> 其他能力
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white/5 rounded-lg p-4">
+                        <div class="text-white font-medium mb-2">📊 机器学习基础算法</div>
+                        <div class="text-white/60 text-sm">了解机器学习基础算法，熟悉数据集划分、模型训练与调参流程</div>
+                    </div>
+                    <div class="bg-white/5 rounded-lg p-4">
+                        <div class="text-white font-medium mb-2">🔧 代码调试能力</div>
+                        <div class="text-white/60 text-sm">能够查阅技术文档，调试简易代码 bug，具备基础项目落地实操能力</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/10 mt-6">
+                <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                    <i class="fas fa-code"></i> 项目作品
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl p-4 border border-blue-500/30">
+                        <div class="text-4xl mb-3">✅</div>
+                        <div class="text-white font-semibold mb-2">待办清单</div>
+                        <div class="text-white/60 text-sm">任务管理工具，支持优先级、截止时间、成就系统</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl p-4 border border-purple-500/30">
+                        <div class="text-4xl mb-3">📒</div>
+                        <div class="text-white font-semibold mb-2">笔记工具</div>
+                        <div class="text-white/60 text-sm">支持颜色标记、收藏功能的笔记管理应用</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl p-4 border border-green-500/30">
+                        <div class="text-4xl mb-3">💰</div>
+                        <div class="text-white font-semibold mb-2">记账工具</div>
+                        <div class="text-white/60 text-sm">收支管理工具，支持多分类统计</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="edit-todo-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-white">编辑待办事项</h3>
+                <button onclick="closeEditTodoModal()" class="text-white hover:text-red-400">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="edit-todo-form">
+                <input type="hidden" id="edit-todo-id">
+                <div class="mb-4">
+                    <label class="block text-white text-sm mb-2">任务内容</label>
+                    <input type="text" id="edit-todo-text" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-white text-sm mb-2">截止时间</label>
+                    <input type="datetime-local" id="edit-todo-deadline" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-white text-sm mb-2">优先级</label>
+                    <select id="edit-todo-priority" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500">
+                        <option value="low">🟢 低优先级</option>
+                        <option value="medium">🟡 中优先级</option>
+                        <option value="high">🔴 高优先级</option>
+                    </select>
+                </div>
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeEditTodoModal()" class="flex-1 bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-500 transition-colors">取消</button>
+                    <button type="submit" class="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-2 rounded-lg hover:opacity-90 transition-opacity">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="todo-success-animation" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-50 hidden">
+        <div class="text-center">
+            <div class="text-8xl animate-bounce">✅</div>
+            <div class="text-2xl text-white font-bold mt-4" id="todo-success-message">太棒了！</div>
+        </div>
+    </div>
+
+    <div id="edit-note-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-white">编辑笔记</h3>
+                <button onclick="closeEditNoteModal()" class="text-white hover:text-red-400">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="edit-note-form">
+                <input type="hidden" id="edit-note-id">
+                <div class="mb-4">
+                    <label class="block text-white text-sm mb-2">笔记标题</label>
+                    <input type="text" id="edit-note-title" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-white text-sm mb-2">笔记内容</label>
+                    <textarea id="edit-note-content" rows="4" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-500 resize-none"></textarea>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-white text-sm mb-2">笔记颜色</label>
+                    <input type="color" id="edit-note-color" value="#6366f1" class="w-16 h-10 rounded-lg cursor-pointer border-0 bg-transparent">
+                </div>
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeEditNoteModal()" class="flex-1 bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-500 transition-colors">取消</button>
+                    <button type="submit" class="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-2 rounded-lg hover:opacity-90 transition-opacity">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="fixed bottom-6 left-6 flex gap-2 z-40">
+        <button onclick="exportData()" class="bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition-opacity shadow-lg glow-hover" title="导出数据 (Ctrl+E)">
+            <i class="fas fa-download mr-2"></i>导出
+        </button>
+        <label class="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition-opacity shadow-lg cursor-pointer glow-hover">
+            <i class="fas fa-upload mr-2"></i>导入
+            <input type="file" accept=".json" onchange="importData(event)" class="hidden">
+        </label>
+        <button onclick="toggleTheme()" class="bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-lg font-semibold hover:bg-white/20 transition-all shadow-lg glow-hover" title="切换主题 (D)">
+            <i class="fas fa-moon mr-2"></i>
+        </button>
+        <button onclick="toggleShortcutsHelp()" class="bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-lg font-semibold hover:bg-white/20 transition-all shadow-lg glow-hover" title="快捷键帮助">
+            <i class="fas fa-keyboard mr-2"></i>
+        </button>
+    </div>
+
+    <div id="shortcuts-help" class="fixed bottom-20 left-6 bg-black/80 backdrop-blur-md rounded-xl p-4 border border-white/10 z-40 hidden">
+        <h4 class="text-white font-bold mb-3">⌨️ 快捷键</h4>
+        <div class="space-y-2 text-sm">
+            <div class="flex items-center gap-3">
+                <kbd class="bg-white/20 px-2 py-1 rounded text-xs">1</kbd>
+                <kbd class="bg-white/20 px-2 py-1 rounded text-xs">T</kbd>
+                <span class="text-white/70">待办清单</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <kbd class="bg-white/20 px-2 py-1 rounded text-xs">2</kbd>
+                <kbd class="bg-white/20 px-2 py-1 rounded text-xs">N</kbd>
+                <span class="text-white/70">笔记</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <kbd class="bg-white/20 px-2 py-1 rounded text-xs">3</kbd>
+                <kbd class="bg-white/20 px-2 py-1 rounded text-xs">F</kbd>
+                <span class="text-white/70">记账</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <kbd class="bg-white/20 px-2 py-1 rounded text-xs">4</kbd>
+                <kbd class="bg-white/20 px-2 py-1 rounded text-xs">A</kbd>
+                <span class="text-white/70">关于我</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <kbd class="bg-white/20 px-2 py-1 rounded text-xs">D</kbd>
+                <span class="text-white/70">切换主题</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <kbd class="bg-white/20 px-2 py-1 rounded text-xs">Ctrl</kbd>
+                <kbd class="bg-white/20 px-2 py-1 rounded text-xs">E</kbd>
+                <span class="text-white/70">导出数据</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
