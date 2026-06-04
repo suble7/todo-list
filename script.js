@@ -1,5 +1,9 @@
 const TODOS_KEY = 'todo-list-todos';
 const TODO_BADGES_KEY = 'todo-list-badges';
+const NOTES_KEY = 'todo-list-notes';
+const FINANCE_KEY = 'todo-list-finance';
+const STATS_KEY = 'todo-list-stats';
+const THEME_KEY = 'todo-list-theme';
 
 const TODO_BADGE_CONFIG = [
     { id: 'todo-first', name: '初次尝试', emoji: '🌱', condition: '完成第一个待办任务' },
@@ -17,15 +21,43 @@ const MOTIVATIONAL_MESSAGES = [
     '太优秀了！', '你是最棒的！', '继续加油！', '胜利在望！',
 ];
 
+const FINANCE_CATEGORIES = {
+    food: { emoji: '🍜', name: '餐饮' },
+    transport: { emoji: '🚇', name: '交通' },
+    shopping: { emoji: '🛒', name: '购物' },
+    entertainment: { emoji: '🎮', name: '娱乐' },
+    health: { emoji: '🏥', name: '医疗' },
+    education: { emoji: '📚', name: '教育' },
+    salary: { emoji: '💼', name: '工资' },
+    bonus: { emoji: '🎁', name: '奖金' },
+    other: { emoji: '📦', name: '其他' },
+};
+
 let todos = [];
 let todoBadges = [];
-let currentFilter = 'all';
+let notes = [];
+let financeRecords = [];
+let usageStats = {};
+let currentTheme = 'dark';
+let currentTodoFilter = 'all';
+let currentNotesFilter = 'all';
+let currentFinanceFilter = 'all';
+let currentTool = 'todo';
 
 function init() {
     loadTodos();
+    loadNotes();
+    loadFinance();
+    loadStats();
+    loadTheme();
     renderTodos();
     updateTodoStats();
     renderTodoBadges();
+    renderNotes();
+    updateNotesStats();
+    renderFinance();
+    updateFinanceStats();
+    initKeyboardShortcuts();
 }
 
 function isLocalStorageAvailable() {
@@ -73,12 +105,180 @@ function loadTodos() {
 
 function saveTodos() { safeSave(TODOS_KEY, todos); }
 function saveTodoBadges() { safeSave(TODO_BADGES_KEY, todoBadges); }
+function saveNotes() { safeSave(NOTES_KEY, notes); }
+function saveFinance() { safeSave(FINANCE_KEY, financeRecords); }
+function saveStats() { safeSave(STATS_KEY, usageStats); }
+function saveTheme() { safeSave(THEME_KEY, currentTheme); }
+
+function loadFinance() {
+    const savedFinance = safeGet(FINANCE_KEY, null);
+    financeRecords = (savedFinance && Array.isArray(savedFinance)) ? savedFinance : [];
+}
+
+function loadStats() {
+    const savedStats = safeGet(STATS_KEY, null);
+    usageStats = savedStats || {
+        todo: { created: 0, completed: 0, lastUsed: null },
+        notes: { created: 0, edited: 0, lastUsed: null },
+        finance: { created: 0, totalExpense: 0, totalIncome: 0, lastUsed: null },
+        appOpens: 0,
+        totalTime: 0,
+    };
+    usageStats.appOpens++;
+    saveStats();
+}
+
+function loadTheme() {
+    currentTheme = safeGet(THEME_KEY, 'dark');
+    applyTheme();
+}
+
+function applyTheme() {
+    if (currentTheme === 'light') {
+        document.body.classList.add('light-theme');
+        document.body.classList.remove('dark-theme');
+    } else {
+        document.body.classList.add('dark-theme');
+        document.body.classList.remove('light-theme');
+    }
+}
+
+function toggleTheme() {
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    saveTheme();
+    applyTheme();
+    showToast(`已切换到${currentTheme === 'dark' ? '深色' : '浅色'}模式`, 'info');
+}
+
+function updateStats(tool, action, data) {
+    if (!usageStats[tool]) usageStats[tool] = {};
+    usageStats[tool].lastUsed = new Date().toISOString();
+    
+    if (tool === 'todo') {
+        if (action === 'create') usageStats.todo.created = (usageStats.todo.created || 0) + 1;
+        if (action === 'complete') usageStats.todo.completed = (usageStats.todo.completed || 0) + 1;
+    } else if (tool === 'notes') {
+        if (action === 'create') usageStats.notes.created = (usageStats.notes.created || 0) + 1;
+        if (action === 'edit') usageStats.notes.edited = (usageStats.notes.edited || 0) + 1;
+    } else if (tool === 'finance') {
+        if (action === 'create') usageStats.finance.created = (usageStats.finance.created || 0) + 1;
+        if (action === 'expense') usageStats.finance.totalExpense = (usageStats.finance.totalExpense || 0) + data;
+        if (action === 'income') usageStats.finance.totalIncome = (usageStats.finance.totalIncome || 0) + data;
+    }
+    
+    saveStats();
+}
+
+function renderFinance() {
+    const container = document.getElementById('finance-list');
+    
+    let filteredRecords = currentFinanceFilter === 'all' ? financeRecords 
+        : financeRecords.filter(r => r.type === currentFinanceFilter);
+    
+    filteredRecords.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    if (filteredRecords.length === 0) {
+        container.innerHTML = '<div class="text-center py-12 text-white/50">暂无记账记录</div>';
+        return;
+    }
+    
+    container.innerHTML = filteredRecords.map(record => {
+        const category = FINANCE_CATEGORIES[record.category] || FINANCE_CATEGORIES.other;
+        const isExpense = record.type === 'expense';
+        
+        return `<div class="todo-card" data-id="${record.id}">
+            <div class="flex items-start gap-3">
+                <div class="text-2xl">${category.emoji}</div>
+                <div class="flex-1">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-white font-semibold">${category.name}</span>
+                        <span class="${isExpense ? 'text-red-400' : 'text-green-400'} font-bold">${isExpense ? '-' : '+'}${record.amount.toFixed(2)}</span>
+                    </div>
+                    ${record.note ? `<div class="text-sm text-blue-300">${escapeHtml(record.note)}</div>` : ''}
+                    <div class="text-sm text-white/50 mt-1">${formatFinanceDate(record.createdAt)}</div>
+                </div>
+                <button onclick="deleteFinance('${record.id}')" class="text-white/70 hover:text-red-400 p-2" title="删除">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function formatFinanceDate(dateStr) {
+    const date = new Date(dateStr);
+    return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function updateFinanceStats() {
+    const expense = financeRecords.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0);
+    const income = financeRecords.filter(r => r.type === 'income').reduce((sum, r) => sum + r.amount, 0);
+    const balance = income - expense;
+    
+    document.getElementById('finance-total').textContent = expense.toFixed(2);
+    document.getElementById('finance-income').textContent = income.toFixed(2);
+    document.getElementById('finance-balance').textContent = balance.toFixed(2);
+    document.getElementById('finance-count').textContent = financeRecords.length;
+}
+
+document.getElementById('finance-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const type = document.getElementById('finance-type').value;
+    const amount = parseFloat(document.getElementById('finance-amount').value);
+    const category = document.getElementById('finance-category').value;
+    const note = document.getElementById('finance-note').value.trim();
+    
+    if (!amount || amount <= 0) {
+        showToast('请输入有效的金额', 'warning');
+        return;
+    }
+    
+    financeRecords.push({ 
+        id: Date.now().toString(), 
+        type, 
+        amount, 
+        category, 
+        note,
+        createdAt: new Date().toISOString() 
+    });
+    saveFinance();
+    
+    updateStats('finance', 'create');
+    updateStats('finance', type, amount);
+    
+    document.getElementById('finance-amount').value = '';
+    document.getElementById('finance-note').value = '';
+    
+    renderFinance();
+    updateFinanceStats();
+    showToast('记账成功！', 'success');
+});
+
+function deleteFinance(recordId) {
+    if (!confirm('确定要删除这条记录吗？')) return;
+    const record = financeRecords.find(r => r.id === recordId);
+    if (record) {
+        updateStats('finance', record.type, -record.amount);
+    }
+    financeRecords = financeRecords.filter(r => r.id !== recordId);
+    saveFinance();
+    renderFinance();
+    updateFinanceStats();
+    showToast('记录已删除', 'info');
+}
+
+function filterFinance(filter) {
+    currentFinanceFilter = filter;
+    document.querySelectorAll('#tool-finance .filter-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`finance-filter-${filter}`).classList.add('active');
+    renderFinance();
+}
 
 function renderTodos() {
     const container = document.getElementById('todo-list');
     
-    let filteredTodos = currentFilter === 'all' ? todos 
-        : currentFilter === 'pending' ? todos.filter(t => !t.completed) 
+    let filteredTodos = currentTodoFilter === 'all' ? todos 
+        : currentTodoFilter === 'pending' ? todos.filter(t => !t.completed) 
         : todos.filter(t => t.completed);
     
     filteredTodos.sort((a, b) => {
@@ -215,6 +415,35 @@ function closeEditTodoModal() {
     document.getElementById('edit-todo-modal').classList.add('hidden');
 }
 
+function closeEditNoteModal() {
+    document.getElementById('edit-note-modal').classList.add('hidden');
+}
+
+document.getElementById('edit-note-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit-note-id').value;
+    const title = document.getElementById('edit-note-title').value.trim();
+    const content = document.getElementById('edit-note-content').value.trim();
+    const color = document.getElementById('edit-note-color').value;
+    
+    if (!title && !content) {
+        showToast('请输入笔记内容', 'warning');
+        return;
+    }
+    
+    const note = notes.find(n => n.id === id);
+    if (note) {
+        note.title = title;
+        note.content = content;
+        note.color = color;
+        saveNotes();
+        closeEditNoteModal();
+        renderNotes();
+        updateNotesStats();
+        showToast('笔记更新成功！', 'success');
+    }
+});
+
 document.getElementById('edit-todo-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const id = document.getElementById('edit-todo-id').value;
@@ -238,8 +467,8 @@ document.getElementById('edit-todo-form').addEventListener('submit', (e) => {
 });
 
 function filterTodos(filter) {
-    currentFilter = filter;
-    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+    currentTodoFilter = filter;
+    document.querySelectorAll('#tool-todo .filter-btn').forEach(btn => btn.classList.remove('active'));
     document.getElementById(`filter-${filter}`).classList.add('active');
     renderTodos();
 }
@@ -296,8 +525,266 @@ function unlockTodoBadge(badgeId) {
         saveTodoBadges();
         renderTodoBadges();
         updateTodoStats();
-        setTimeout(() => alert(`🎉 恭喜解锁成就：${badge.name}！`), 500);
+        showToast(`🎉 恭喜解锁成就：${badge.name}！`, 'success');
     }
+}
+
+function loadNotes() {
+    const savedNotes = safeGet(NOTES_KEY, null);
+    notes = (savedNotes && Array.isArray(savedNotes)) ? savedNotes : [];
+}
+
+function saveNotes() { safeSave(NOTES_KEY, notes); }
+
+function renderNotes() {
+    const container = document.getElementById('notes-list');
+    
+    let filteredNotes = currentNotesFilter === 'all' ? notes 
+        : notes.filter(n => n.starred);
+    
+    filteredNotes.sort((a, b) => {
+        if (a.starred !== b.starred) return a.starred ? -1 : 1;
+        return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+    
+    if (filteredNotes.length === 0) {
+        container.innerHTML = '<div class="col-span-2 text-center py-12 text-white/50">暂无笔记</div>';
+        return;
+    }
+    
+    container.innerHTML = filteredNotes.map(note => `
+        <div class="note-card ${note.starred ? 'starred' : ''}" style="border-left-color: ${note.color};">
+            <div class="note-title">${escapeHtml(note.title || '无标题')}</div>
+            <div class="note-content">${escapeHtml(note.content || '')}</div>
+            <div class="note-meta">
+                <div class="note-date">${formatNoteDate(note.createdAt)}</div>
+                <div class="note-actions">
+                    <button onclick="toggleNoteStar('${note.id}')" title="${note.starred ? '取消收藏' : '收藏'}">
+                        <i class="fas ${note.starred ? 'fa-star' : 'fa-star-o'}"></i>
+                    </button>
+                    <button onclick="editNote('${note.id}')" title="编辑">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="deleteNote('${note.id}')" title="删除">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function formatNoteDate(dateStr) {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = now - date;
+    const days = Math.floor(diff / 86400000);
+    
+    if (days === 0) return '今天';
+    if (days === 1) return '昨天';
+    if (days < 7) return `${days}天前`;
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
+document.getElementById('note-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const title = document.getElementById('note-title').value.trim();
+    const content = document.getElementById('note-content').value.trim();
+    const color = document.getElementById('note-color').value;
+    
+    if (!title && !content) {
+        showToast('请输入笔记内容', 'warning');
+        return;
+    }
+    
+    notes.push({ 
+        id: Date.now().toString(), 
+        title, 
+        content, 
+        color,
+        starred: false,
+        createdAt: new Date().toISOString() 
+    });
+    saveNotes();
+    
+    document.getElementById('note-title').value = '';
+    document.getElementById('note-content').value = '';
+    document.getElementById('note-color').value = '#6366f1';
+    
+    renderNotes();
+    updateNotesStats();
+    showToast('笔记创建成功！', 'success');
+});
+
+function toggleNoteStar(noteId) {
+    const note = notes.find(n => n.id === noteId);
+    if (note) {
+        note.starred = !note.starred;
+        saveNotes();
+        renderNotes();
+        updateNotesStats();
+        showToast(note.starred ? '已收藏' : '取消收藏', 'info');
+    }
+}
+
+function editNote(noteId) {
+    const note = notes.find(n => n.id === noteId);
+    if (note) {
+        document.getElementById('edit-note-id').value = note.id;
+        document.getElementById('edit-note-title').value = note.title || '';
+        document.getElementById('edit-note-content').value = note.content || '';
+        document.getElementById('edit-note-color').value = note.color;
+        document.getElementById('edit-note-modal').classList.remove('hidden');
+    }
+}
+
+function deleteNote(noteId) {
+    if (!confirm('确定要删除这条笔记吗？')) return;
+    notes = notes.filter(n => n.id !== noteId);
+    saveNotes();
+    renderNotes();
+    updateNotesStats();
+    showToast('笔记已删除', 'info');
+}
+
+function filterNotes(filter) {
+    currentNotesFilter = filter;
+    document.querySelectorAll('#tool-notes .filter-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`notes-filter-${filter}`).classList.add('active');
+    renderNotes();
+}
+
+function updateNotesStats() {
+    const total = notes.length;
+    const starred = notes.filter(n => n.starred).length;
+    const today = new Date().toISOString().split('T')[0];
+    const todayCount = notes.filter(n => n.createdAt.startsWith(today)).length;
+    
+    document.getElementById('notes-total').textContent = total;
+    document.getElementById('notes-starred').textContent = starred;
+    document.getElementById('notes-today').textContent = todayCount;
+}
+
+function switchTool(tool) {
+    currentTool = tool;
+    
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`nav-${tool}`).classList.add('active');
+    
+    document.querySelectorAll('.tool-content').forEach(content => content.classList.add('hidden'));
+    document.getElementById(`tool-${tool}`).classList.remove('hidden');
+    
+    if (tool === 'stats') {
+        renderStats();
+    }
+    
+    document.body.style.animation = 'none';
+    setTimeout(() => {
+        document.body.style.animation = '';
+    }, 10);
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `fixed bottom-6 right-6 px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300 ${
+        type === 'success' ? 'bg-green-500' : 
+        type === 'warning' ? 'bg-yellow-500' : 
+        type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+    } text-white font-medium`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(20px)';
+        setTimeout(() => toast.remove(), 300);
+    }, 2500);
+}
+
+function exportData() {
+    const data = {
+        todos,
+        todoBadges,
+        notes,
+        financeRecords,
+        usageStats,
+        exportedAt: new Date().toISOString()
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `life-toolbox-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showToast('数据导出成功！', 'success');
+}
+
+function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (data.todos && Array.isArray(data.todos)) todos = data.todos;
+            if (data.todoBadges && Array.isArray(data.todoBadges)) todoBadges = data.todoBadges;
+            if (data.notes && Array.isArray(data.notes)) notes = data.notes;
+            if (data.financeRecords && Array.isArray(data.financeRecords)) financeRecords = data.financeRecords;
+            if (data.usageStats) usageStats = { ...usageStats, ...data.usageStats };
+            
+            saveTodos();
+            saveTodoBadges();
+            saveNotes();
+            saveFinance();
+            saveStats();
+            
+            renderTodos();
+            updateTodoStats();
+            renderTodoBadges();
+            renderNotes();
+            updateNotesStats();
+            renderFinance();
+            updateFinanceStats();
+            
+            showToast('数据导入成功！', 'success');
+        } catch (err) {
+            showToast('导入失败：无效的文件格式', 'error');
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+function initKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        
+        if (e.key === '1' || e.key === 't') {
+            switchTool('todo');
+        } else if (e.key === '2' || e.key === 'n') {
+            switchTool('notes');
+        } else if (e.key === '3' || e.key === 'f') {
+            switchTool('finance');
+        } else if (e.key === '4' || e.key === 'a') {
+            switchTool('about');
+        } else if (e.key === 'd') {
+            toggleTheme();
+        } else if (e.ctrlKey && e.key === 'e') {
+            e.preventDefault();
+            exportData();
+        }
+    });
+}
+
+function toggleShortcutsHelp() {
+    const help = document.getElementById('shortcuts-help');
+    help.classList.toggle('hidden');
 }
 
 document.addEventListener('DOMContentLoaded', init);
